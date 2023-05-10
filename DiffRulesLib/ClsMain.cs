@@ -10,7 +10,7 @@ public class ClsMain
     public double Clave2 {get; set;} = double.NaN;
     public DataFrame Serie {get; set;} = null;
     public string NClave1 {get; set;} = string.Empty;
-    string NClave2 {get; set;} = string.Empty;
+    public string NClave2 {get; set;} = string.Empty;
 
     private List<DataFrame> Make_Diff_Breve_T(int Multiplo)
     {       
@@ -41,7 +41,7 @@ public class ClsMain
 
             for (int j = 0; j < ffromd.Length; j++)
             {
-                Acunm += ffromd[j];
+                Acunm += f[j];
                 ffromd[j] = Acunm;
                 if (f[j] != 0) ferror[j] = (double)ffromd[j] / (double)f[j];
                     else ferror[j] = double.NaN;
