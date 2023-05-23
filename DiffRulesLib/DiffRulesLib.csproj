@@ -9,6 +9,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Data.Analysis" Version="0.20.1" />
     <PackageReference Include="Plotly.NET.CSharp" Version="0.10.0" />
+    <PackageReference Include="System.IO.Compression.ZipFile" Version="4.3.0" />
   </ItemGroup>
 
   <ItemGroup>

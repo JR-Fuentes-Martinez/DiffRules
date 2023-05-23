@@ -6,6 +6,7 @@ using Plotly.NET.ConfigObjects;
 using Plotly.NET.LayoutObjects;
 using Plotly.NET.TraceObjects;
 using Microsoft.FSharp.Core;
+using System.IO.Compression;
 
 namespace DiffRulesLib;
 
@@ -16,7 +17,8 @@ public enum TipoFuncion
     Error
 }
 public class ClsMain
-{    public void Make_Diff_Breve_T_S(ref DataFrame InDatosSorted, int Multiplo = 1)
+{    
+    public void Make_Diff_Breve_T_S(ref DataFrame InDatosSorted, int Multiplo = 1)
     { 
         var CulUsa = new System.Globalization.CultureInfo("en-US");  
         if (InDatosSorted == null ) return; 
@@ -42,8 +44,8 @@ public class ClsMain
                 for (int l = 0; l < X2es.Length; l++) {
                     X2es[l] = (double)l / (double)Multiplo;
                     Serie[l] = InDatosSorted.Series[j];
-                }                    
-                alglib.spline1dconvdiffcubic(Xes, Yes, Xes.Length, 0, 0.0, 0, 0.0, X2es, X2es.Length, out f, out d);
+                }
+                alglib.spline1dconvdiffcubic(Xes, Yes, Xes.Length, 0, 0.0, 0, 0.0, X2es, X2es.Length, out f, out d);                
                 double[] ffromd = new double[X2es.Length];
                 double[] ferror = new double[X2es.Length];
                 var Acum = f[0] / Multiplo;
@@ -53,7 +55,7 @@ public class ClsMain
                 {   
                     Acum += d[l];
                     ffromd[l] = Acum / Multiplo;
-                    if (f[l] != 0) ferror[l] = (double)ffromd[l] / (double)f[l];
+                    if (f[l] != 0) ferror[l] = Math.Abs((double)ffromd[l] / (double)f[l]);
                         else ferror[l] = double.MinValue;
                 }
                 Array.Resize(ref ffromd, ffromd.Length-1);
@@ -78,42 +80,77 @@ public class ClsMain
         }
     }
     public GenericChart.GenericChart Make_Plotly_3DGraph(ref DataFrame InDatosSorted, int Mag, 
-        GraphDefinition Definition) {
-        
-        
-        GenericChart.GenericChart[] ListaGraf = new GenericChart.GenericChart[InDatosSorted.DF.Count]; 
+        GraphDefinition Definition, bool Salvar = false, string SoloRuta = "")
+    {             
+        GenericChart.GenericChart[] ListaGraf = 
+            new GenericChart.GenericChart[InDatosSorted.DF.Count]; 
+
         for (int i = 0; i <  InDatosSorted.DF.Count; i++)
         {
             List<double> LaFuncion = new();
+            string Nombre = string.Empty;
 
             switch (Definition.Funcion)
             {
                 case TipoFuncion.FuncionPrimitiva:
                     LaFuncion = InDatosSorted.DF[i].Datos[Mag].PrimitivaPorAcum.ToList();
+                    Nombre = "Acum";
                     break;
                 case TipoFuncion.Derivada:
                     LaFuncion = InDatosSorted.DF[i].Datos[Mag].Derivada.ToList();
+                    Nombre = "Derivada";
                     break;
                 case TipoFuncion.Error:
                     LaFuncion = InDatosSorted.DF[i].Datos[Mag].Error.ToList();
+                    Nombre = "Error";
                     break;        
             }
             var bb = Chart3D.Chart.Line3D<double,double,double,double>(
                 InDatosSorted.DF[i].Datos[Mag].Tiempo,
                 InDatosSorted.DF[i].Datos[Mag].Serie,
-                LaFuncion
+                LaFuncion, LineColor: Color.fromString(Definition.ColorLinea),
+                LineWidth: FSharpOption<double>.Some(3.0),
+                Name: FSharpOption<string>.Some($"{Nombre}[{i}]")
             );            
             ListaGraf[i] = bb;
-        }
+        }        
         var Total = Chart.Combine(ListaGraf)
-            .WithLayout(Layout.init<bool>(AutoSize: FSharpOption<bool>.Some(true), ShowLegend: FSharpOption<bool>.Some(false),
-                Margin: FSharpOption<Margin>.Some(Margin.init<int, int, int, int, int, bool>(
-                    Left: Definition.Margen, Right: Definition.Margen, Top: Definition.Margen, Bottom: Definition.Margen, 
-                    Pad: 0, Autoexpand: FSharpOption<bool>.Some(false)))))
-            .WithConfig(Config.init(Responsive: FSharpOption<bool>.Some(true), FillFrame: FSharpOption<bool>.Some(false),
-                Autosizable: FSharpOption<bool>.Some(true)))
-            .WithSize(Definition.Ancho, Definition.Alto);
+            .WithLayout(Layout.init<bool>(
+                ShowLegend: FSharpOption<bool>.Some(false),
+                Margin: FSharpOption<Margin>.Some(
+                    Margin.init<double, double, double, double, double, bool>(
+                        Left: Definition.Margen, Right: Definition.Margen, Top: Definition.MargenTop, Bottom: Definition.Margen, 
+                        Pad: 0.0, Autoexpand: FSharpOption<bool>.None))))
+            .WithConfig(Config.init(Responsive: FSharpOption<bool>.Some(true), FillFrame: FSharpOption<bool>.None,
+                Autosizable: FSharpOption<bool>.None))
+            .WithSize(Definition.Ancho, Definition.Alto)
+            .WithXAxisStyle(
+                title: Title.init(FSharpOption<string>.Some(Definition.TituloX)), 
+                Id: StyleParam.SubPlotId.Scene.NewScene(1))
+            .WithYAxisStyle(
+                title: Title.init(FSharpOption<string>.Some(Definition.TituloY)), 
+                Id: StyleParam.SubPlotId.Scene.NewScene(1))
+            .WithZAxisStyle(
+                title: Title.init(FSharpOption<string>.Some(Definition.TituloZ)));
+            
+        if (Salvar && !string.IsNullOrEmpty(SoloRuta)) {
+            try
+            {
+                File.WriteAllText($"{SoloRuta}/graf.tmp", GenericChart.toChartHTML(Total));
 
+                using (var Corriente = File.OpenWrite($"{SoloRuta}/Graf.zip")) {
+                    using (var Archivo = new ZipArchive(Corriente, ZipArchiveMode.Create)) {
+                        Archivo.CreateEntryFromFile($"{SoloRuta}/graf.tmp", "Grafico.txt");
+                    }
+                    Corriente.Close();
+                }
+                File.Delete($"{SoloRuta}/graf.tmp");
+            }
+            catch (System.Exception)
+            {
+                return null;
+            }
+        }
         return Total;
     }
 }
@@ -122,11 +159,15 @@ public class GraphDefinition
 {
     public int Ancho {get; set;} = 600;
     public int Alto {get; set;} = 600;
-    public int Margen {get; set;} = 80;
+    public double Margen {get; set;} = 0.2;
+    public double MargenTop {get; set;} = 0.2;
     public TipoFuncion Funcion {get; set;} = TipoFuncion.Derivada;
     public string TituloX {get; set;} = string.Empty;
     public string TituloY {get; set;} = string.Empty;
     public string TituloZ {get; set;} = string.Empty;
+    public string Titulo {get; set;} = string.Empty;
+    public double SizeTitulo {get; set;} = 16.0;
+    public string ColorLinea {get; set;} = "blue";
 }
 
 public class DataSerie
