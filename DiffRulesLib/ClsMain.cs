@@ -80,7 +80,8 @@ public class ClsMain
         }
     }
     public GenericChart.GenericChart Make_Plotly_3DGraph(ref DataFrame InDatosSorted, int Mag, 
-        GraphDefinition Definition, bool Salvar = false, string SoloRuta = "")
+        GraphDefinition Definition, bool Salvar = false, string SoloRuta = "", 
+        string SoloNombre = "graf")
     {             
         GenericChart.GenericChart[] ListaGraf = 
             new GenericChart.GenericChart[InDatosSorted.DF.Count]; 
@@ -138,9 +139,9 @@ public class ClsMain
             {
                 File.WriteAllText($"{SoloRuta}/graf.tmp", GenericChart.toChartHTML(Total));
 
-                using (var Corriente = File.OpenWrite($"{SoloRuta}/Graf.zip")) {
+                using (var Corriente = File.OpenWrite($"{SoloRuta}/{SoloNombre}.zip")) {
                     using (var Archivo = new ZipArchive(Corriente, ZipArchiveMode.Create)) {
-                        Archivo.CreateEntryFromFile($"{SoloRuta}/graf.tmp", "Grafico.txt");
+                        Archivo.CreateEntryFromFile($"{SoloRuta}/graf.tmp", $"{SoloNombre}.txt");
                     }
                     Corriente.Close();
                 }
