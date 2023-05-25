@@ -17,9 +17,9 @@ public enum TipoFuncion
     Error
 }
 public class ClsMain
-{    
+{
     public void Make_Diff_Breve_T_S(ref DataFrame InDatosSorted, int Multiplo = 1)
-    { 
+    {
         var CulUsa = new System.Globalization.CultureInfo("en-US");  
         if (InDatosSorted == null ) return; 
         //if (Multiplo < 1 || Multiplo > 30) return;
@@ -168,7 +168,7 @@ public class GraphDefinition
     public string TituloZ {get; set;} = string.Empty;
     public string Titulo {get; set;} = string.Empty;
     public double SizeTitulo {get; set;} = 16.0;
-    public string ColorLinea {get; set;} = "blue";
+    public string ColorLinea {get; set;} = "brown";
 }
 
 public class DataSerie
@@ -186,7 +186,7 @@ public class DataSeries
     public List<DataSerie> Datos {get; set;} = new();    
 }
 public class DataFrame
-{    
+{
     public double Clave1 {get; set;} = double.MinValue;
     public double Clave2 {get; set;} = double.MinValue;
     public List<DataSeries> DF {get; set;} = new();
