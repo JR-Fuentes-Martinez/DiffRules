@@ -1,9 +1,9 @@
 using DiffRulesWk;
+using Microsoft.Extensions.Configuration.UserSecrets;
 
 IHost host = Host.CreateDefaultBuilder(args)
     .ConfigureServices(services =>
     {
-        services.AddHostedService<WKGFS>();
         services.AddHostedService<WKCopernicus>();
     })
     .Build();
