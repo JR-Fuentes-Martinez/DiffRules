@@ -33,14 +33,14 @@ public class WKCopernicus : BackgroundService
         _localRoot = _config.GetValue<string>("localroot");
         
         try {
-            using FtpClient FTPCliente = new("nrt.cmems-du.eu", _config.GetValue<string>("Usuario"),
+            using FtpClient FTPCliente = new( _config.GetValue<string>("ServidorRemoto"), _config.GetValue<string>("Usuario"),
                 _config.GetValue<string>("Contra"));
                 var Profile = FTPCliente.AutoConnect();
                 
                 if (Profile != null && FTPCliente.IsConnected && FTPCliente.IsAuthenticated) {
 
-                    var DirectorioRaiz = "/Core/SST_GLO_SST_L4_NRT_OBSERVATIONS_010_001/METOFFICE-GLO-SST-L4-NRT-OBS-SST-V2/"
-                    + $"{RFecha.Año.ToString("D4")}/{RFecha.Mes.ToString("D2")}";
+                    var DirectorioRaiz = _config.GetValue<string>("DirBase")
+                            + $"{RFecha.Año.ToString("D4")}/{RFecha.Mes.ToString("D2")}";
                     var ResultFtp = new List<FtpResult>();
 
                     if (FTPCliente.DirectoryExists(DirectorioRaiz)) {
