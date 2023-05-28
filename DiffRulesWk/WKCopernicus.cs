@@ -31,7 +31,7 @@ public class WKCopernicus : BackgroundService
             _logger.LogInformation("Worker running at: {time}", DateTimeOffset.Now);
             RegistroPorMes RFecha = new() {
                 Año = 2023,
-                Mes = 04
+                Mes = 3
             };
             await DownloadByMonth(ref RFecha, stoppingToken);
             await MakeNclTotals(ref RFecha, stoppingToken);
