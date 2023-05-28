@@ -14,13 +14,14 @@ public class WKCopernicus : BackgroundService
     private string _localRoot = string.Empty;
     private string _RutaScript = string.Empty;
     private string _RutaDb = string.Empty;
-
+    private string _rsScript = string.Empty;
 
     public WKCopernicus(ILogger<WKCopernicus> logger, IConfiguration config)
     {
         _logger = logger;
         _config = config;
         _RutaDb = _config.GetValue<string>("rutadb", string.Empty);
+        _rsScript = _config.GetValue<string>("rutascript");
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -33,6 +34,7 @@ public class WKCopernicus : BackgroundService
                 Mes = 04
             };
             await DownloadByMonth(ref RFecha, stoppingToken);
+            await MakeNclTotals(ref RFecha, stoppingToken);
         //}
     }
     protected Task DownloadByMonth(ref RegistroPorMes RFecha, CancellationToken cToken, bool Actualizar = false)
@@ -40,51 +42,52 @@ public class WKCopernicus : BackgroundService
         _localRoot = _config.GetValue<string>("localroot");
         
         try {
-            using FtpClient FTPCliente = new( _config.GetValue<string>("ServidorRemoto"), _config.GetValue<string>("Usuario"),
-                _config.GetValue<string>("Contra"));
+            using (FtpClient FTPCliente = new(_config.GetValue<string>("ServidorRemoto"), _config.GetValue<string>("Usuario"), 
+                _config.GetValue<string>("Contra"))) {
+
+                var DirectorioRaiz = _config.GetValue<string>("DirBase")
+                        + $"{RFecha.Año.ToString("D4")}/{RFecha.Mes.ToString("D2")}";
+                var ResultFtp = new List<FtpResult>();                    
+
+                string RutaCompleta = $"{_localRoot}/{RFecha.Año.ToString("D4")}/{RFecha.Mes.ToString("D2")}";
+                Directory.CreateDirectory(RutaCompleta);
+                FtpLocalExists Existe;
+
+                if (!Actualizar)  Existe = FtpLocalExists.Skip;
+                    else Existe = FtpLocalExists.Overwrite;
+
                 var Profile = FTPCliente.AutoConnect();
-                
+
                 if (Profile != null && FTPCliente.IsConnected && FTPCliente.IsAuthenticated) {
 
-                    var DirectorioRaiz = _config.GetValue<string>("DirBase")
-                            + $"{RFecha.Año.ToString("D4")}/{RFecha.Mes.ToString("D2")}";
-                    var ResultFtp = new List<FtpResult>();
+                    ResultFtp = FTPCliente.DownloadDirectory(RutaCompleta, DirectorioRaiz, FtpFolderSyncMode.Mirror, Existe, 
+                        progress: (Progreso) => _logger.LogInformation($"{Progreso.FileIndex} de {Progreso.FileCount} archivos terminados"));
 
-                    if (FTPCliente.DirectoryExists(DirectorioRaiz)) {
+                    FTPCliente.Disconnect();
+                    
+                    if (ResultFtp.Count == 0) {
+                        return Task.CompletedTask;
+                    }
+                    for (int j = 0; j < ResultFtp.Count; j++)
+                    {
+                        var locDato = new RegistroArchivo();
 
-                        string RutaCompleta = $"{_localRoot}/{RFecha.Año.ToString("D4")}/{RFecha.Mes.ToString("D2")}";
-                        Directory.CreateDirectory(RutaCompleta);
-                        FTPCliente.SetWorkingDirectory(DirectorioRaiz);
-                        FtpLocalExists Existe;
-
-                        if (!Actualizar)  Existe = FtpLocalExists.Skip;
-                            else Existe = FtpLocalExists.Overwrite;
-
-                        ResultFtp = FTPCliente.DownloadDirectory(RutaCompleta, DirectorioRaiz, FtpFolderSyncMode.Mirror, Existe, 
-                            progress: (Progreso) => _logger.LogInformation($"{Progreso.FileIndex} de {Progreso.FileCount} archivos terminados"));
-                        FTPCliente.Disconnect();
-                        
-                        if (ResultFtp.Count == 0) {
-                            return Task.CompletedTask;
+                        if (ResultFtp[j].Exception != null) {                                 
+                            locDato.Excepcion = ResultFtp[j].Exception;                               
                         }
-                        RFecha.SoloRutaLocal = ResultFtp[0].LocalPath;
-                        RFecha.SoloRutaRemota = ResultFtp[0].RemotePath;
-
-                        for (int j = 0; j < ResultFtp.Count; j++)
-                        {
-                            var locDato = new RegistroArchivo();
-
-                            if (ResultFtp[j].Exception != null) {                                 
-                                locDato.Excepcion = ResultFtp[j].Exception;                               
-                            }
-                            locDato.SoloNombre = ResultFtp[j].Name;
-                            RFecha.DatosArchivo.Add(locDato);
-                        }                        
-                    }  else throw new Exception("No existe el directorio raiz");                                             
-                } else throw new Exception("No se pudo conectar");
+                        locDato.RutaLocal = ResultFtp[j].LocalPath;
+                        locDato.RutaRemota = ResultFtp[j].RemotePath;
+                        RFecha.DatosArchivo.Add(locDato);
+                    }
+                } else {
+                    if (FTPCliente.IsConnected) FTPCliente.Disconnect();
+                    throw new Exception("No se pudo conectar");
+                }
+            }
             RFecha.ExitoDownload = true;
             return Task.CompletedTask;
-        } catch (Exception e){
+
+        } catch (Exception e) {
             RFecha.ExitoDownload = false;
             return Task.FromException(e);
         }
@@ -100,35 +103,33 @@ public class WKCopernicus : BackgroundService
             CommDb.Parameters.Clear();
             CommDb.Parameters.Add("@anho", System.Data.DbType.Int32);
             CommDb.Parameters.Add("@mes", System.Data.DbType.Int32);
-            CommDb.Parameters.Add("@json", System.Data.DbType.AnsiString);
+            CommDb.Parameters.Add("@json", System.Data.DbType.String);
             CommDb.Prepare();
 
-            var NScript = $"{_config.GetValue<string>("rutascript")}/DRScript.ncl";
-            var RScriptFilled = _config.GetValue<string>("rutascript");
-            var CScript = File.ReadAllLines(NScript).ToList();
-
-            using Process ProcesoNcl = new Process();
-            ProcesoNcl.StartInfo.FileName = "ncl";
-            var FSwriter = ProcesoNcl.StandardInput;
-            ProcesoNcl.Start();
-            Task.Delay(2000);
-
+            var NScript = $"{_rsScript}/DRScript.ncl";
+            var CScript = File.ReadAllLines(NScript);
+           
             for (int i = 0; i < RFecha.DatosArchivo.Count; i++)
             {
-                var LocScript = CScript;
+                var LocScript = new string[CScript.Length];
+                Array.Copy(CScript, LocScript, CScript.Length);
 
-                LocScript[4] = LocScript[4].TrimStart();
-                LocScript[4] = LocScript[4].Insert(12, 
-                    $"{RFecha.SoloRutaLocal}/{RFecha.DatosArchivo[i].SoloNombre}");
+                LocScript[1] = LocScript[1].TrimStart();
+                LocScript[1] = LocScript[1].Insert(13, RFecha.DatosArchivo[i].RutaLocal);
 
-                LocScript[12] = LocScript[12].TrimStart();
-                LocScript[12] = LocScript[12].Insert(12, $"{RScriptFilled}/SaveAscii.tmp");
+                LocScript[7] = LocScript[7].TrimStart();
+                LocScript[7] = LocScript[7].Insert(13, $"{_rsScript}/SaveAscii.tmp");
 
-                File.WriteAllLines($"{RScriptFilled}/DRScriptFilled.ncl", LocScript);
-                FSwriter.WriteLine($"load \"{RScriptFilled}/DRScriptFilled.ncl\"");
-                FSwriter.WriteLine("TotalSIFCalc()");
+                File.WriteAllLines($"{_rsScript}/DRScriptFilled.ncl", LocScript);
 
-                var TxtAscii = File.ReadAllLines($"{RScriptFilled}/SaveAscii.tmp").ToList();
+                 using (Process ProcesoNcl = new Process()) {
+                    ProcesoNcl.StartInfo.FileName = "ncl";
+                    ProcesoNcl.StartInfo.Arguments = $"{_rsScript}/DRScriptFilled.ncl";
+                    ProcesoNcl.Start();
+                    ProcesoNcl.WaitForExit(7500);
+                    if (!ProcesoNcl.HasExited) ProcesoNcl.Kill(true);
+                 }
+                var TxtAscii = File.ReadAllLines($"{_rsScript}/SaveAscii.tmp");
                 var Datos = TxtAscii[0].Split(' ', 2, StringSplitOptions.TrimEntries);
 
                 var SExito = double.TryParse(Datos[0], out double SifN);
@@ -144,14 +145,14 @@ public class WKCopernicus : BackgroundService
                 CommDb.Parameters["@json"].Value =
                     JsonSerializer.Serialize(RFecha.DatosArchivo);
                 var result = CommDb.ExecuteNonQuery();
+                Task.Delay(1000);
             }
-            ProcesoNcl.Kill(true);
             DbCon.Close();
             DbCon.Dispose();
-            if (File.Exists($"{RScriptFilled}/DRScriptFilled.ncl"))
-                File.Delete($"{RScriptFilled}/DRScriptFilled.ncl");
-            if (File.Exists($"{RScriptFilled}/SaveAscii.tmp"))
-                File.Delete($"{RScriptFilled}/SaveAscii.tmp");
+            if (File.Exists($"{_rsScript}/DRScriptFilled.ncl"))
+                File.Delete($"{_rsScript}/DRScriptFilled.ncl");
+            if (File.Exists($"{_rsScript}/SaveAscii.tmp"))
+                File.Delete($"{_rsScript}/SaveAscii.tmp");
             return Task.CompletedTask;
 
         } catch (Exception e){
@@ -163,14 +164,13 @@ public class RegistroPorMes
 {
     public int Año { get; set; } = 0;
     public int Mes { get; set; } = 0;
-    public string SoloRutaLocal { get; set; } = string.Empty;
-    public string SoloRutaRemota { get; set; } = string.Empty;    
     public bool ExitoDownload {get; set;} = false;
     public List<RegistroArchivo> DatosArchivo {get; set;} = new();    
 }
 public class RegistroArchivo
 {
-    public string SoloNombre { get; set; } = string.Empty;
+    public string RutaLocal { get; set; } = string.Empty;
+    public string RutaRemota { get; set; } = string.Empty;    
     public Exception Excepcion { get; set; } = null;
     public double ToTalSeaIceFractionNorth { get; set; } = -1.0;
     public double ToTalMeanHeightNorth { get; set; } = -1.0;

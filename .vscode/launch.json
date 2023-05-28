@@ -11,8 +11,11 @@
             "preLaunchTask": "build",
             // If you have changed target frameworks, make sure to update the program path.
             "program": "${workspaceFolder}/DiffRulesWk/bin/Debug/net7.0/DiffRulesWk.dll",
-            "args": ["localroot=/home/jr-fuentes-martinez/Documentos",
-                    "rutadb=/home/jr-fuentes-martinez/Documentos/DiffRulesDb"],
+            "args": [
+                "localroot=/home/jr-fuentes-martinez/Documentos",
+                "rutadb=/home/jr-fuentes-martinez/Documentos/DiffRulesDb",
+                "rutascript=/home/jr-fuentes-martinez/Documentos"
+            ],
             "cwd": "${workspaceFolder}/DiffRulesWk",
             // For more information about the 'console' field, see https://aka.ms/VSCode-CS-LaunchJson-Console
             "console": "internalConsole",
