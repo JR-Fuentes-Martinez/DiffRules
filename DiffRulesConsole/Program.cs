@@ -7,50 +7,21 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Configuration;
 using System.CommandLine;
 using System.IO;
+using System.Security.Cryptography;
 
-int UsandoRec = 0;
+int NumCompletas = 0;
 
 try {
-    var localRootOpt = new Option<string>(name: "--localroot", description: "Ruta de directorio local para el mirror FTP (required)");
-    var rutaScriptOpt = new Option<string>(name: "--rutascript", description: "Ruta del script plantila de NCL y archivos tempòrales (required)");
-    var rutaDbOpt = new Option<string>(name: "--rutadb", description: "Ruta de la base de datos de metadata (required)");
-    var FInicioOpt = new Option<DateOnly>(name: "--fechaInicio", description: "Fecha de inicio para la recueración en batch. (required)");
-    var FFinOpt = new Option<DateOnly>(name: "--fechafin", description: "Fecha de fin para la recuperación en batch.)",
-        getDefaultValue: () => DateOnly.FromDateTime(DateTime.Now));
-    var TCicloOpt = new Option<int>(name: "--tciclo", description: "Tiempo en minutos entre conexiones FTP.",
-        getDefaultValue: () => 5);
-    var RedStdOutOpt = new Option<bool>(name: "--redstdout", description: "Redirige la StdOut a un archivo local <StdOut.txt>.",
-        getDefaultValue: () => false);
+    var builder = new ConfigurationBuilder()
+    .AddJsonFile("appsettings.json", optional: false)
+    .AddUserSecrets<Program>();
+    var configurationRoot =  builder.Build();
 
-    var rootCommand = new RootCommand("Entrada de datos UI");
-    var readCommand = new Command("read", "Lee los datos necesarios de entrada UI") {
-        localRootOpt,
-        rutaScriptOpt,
-        rutaDbOpt,
-        FInicioOpt,
-        FFinOpt,
-        TCicloOpt,
-        RedStdOutOpt
-    };    
-    rootCommand.AddCommand(readCommand);
-    
-    DateOnly FechaIncio, FechaFin;
+    DateOnly FechaIncio = DateOnly.MinValue, FechaFin = DateOnly.MinValue;
     int TCiclo = 0;
     bool RedStdOut = false;
+    int Meses = 0;
 
-    readCommand.SetHandler(
-        (_localRoot, _rutaScript, _rutaDb, _finicio, _ffin, _tCiclo, _redStdOut) =>
-        {
-            WKCopernicus._localRoot = _localRoot;
-            WKCopernicus._rsScript = _rutaScript;
-            WKCopernicus._RutaDb = _rutaDb;
-            FechaIncio = _finicio;
-            FechaFin = _ffin;
-            TCiclo = -_tCiclo;
-            RedStdOut = _redStdOut;
-        },
-        localRootOpt, rutaScriptOpt, rutaDbOpt, FInicioOpt, FFinOpt, TCicloOpt, RedStdOutOpt);
-    
     if (RedStdOut) {
         var FOpciones =  new FileStreamOptions() {
             Mode = FileMode.Create,
@@ -59,49 +30,59 @@ try {
         };
         var LocStdOut = new StreamWriter("StdOut.txt", encoding: System.Text.Encoding.UTF8, FOpciones);
         Console.SetOut(LocStdOut);
-    }
-    var builder = new ConfigurationBuilder()
-        .AddUserSecrets<Program>();
-    var configurationRoot =  builder.Build();
-    
+    }    
     WKCopernicus._servidorRemoto = configurationRoot.GetValue<string>("servidorremoto");
     WKCopernicus._usuario = configurationRoot.GetValue<string>("usuario");
-    WKCopernicus._contra = configurationRoot.GetValue<string>("contra");    
+    WKCopernicus._contra = configurationRoot.GetValue<string>("contra");
+    WKCopernicus._localRoot = configurationRoot.GetValue<string>("localroot");
+    WKCopernicus._rsScript = configurationRoot.GetValue<string>("rutascript");
+    WKCopernicus._RutaDb = configurationRoot.GetValue<string>("rutadb");
+    TCiclo = configurationRoot.GetValue<int>("tciclo");
+    FechaIncio = configurationRoot.GetValue<DateOnly>("fechainicio");
+    FechaFin = configurationRoot.GetValue<DateOnly>("fechafin");
 
-    using (var tLongo = new Timer(DoWork, null, new TimeSpan(0, 1, 0), new TimeSpan(0, TCiclo, 0))) {
-    
-        Console.WriteLine("Pulse <Enter> para salir ...");
+    for (DateOnly i = FechaIncio; i <= FechaFin; i=i.AddMonths(1)) { Meses++; }
 
-        while(Console.ReadKey().Key != ConsoleKey.Enter);
-        tLongo.Change(System.Threading.Timeout.Infinite, 1);
-        int Repes = 0;
-        
-        while (0 != Interlocked.Exchange(ref UsandoRec, 1))
+    ObjTimer objTimer = new() {
+        Meses = Meses,
+        FechaInicio = FechaIncio
+    };
+    using (var tLongo = new Timer( DoWork, objTimer, new TimeSpan(0, 0, 30), new TimeSpan(0, TCiclo, 0))) {
+
+        for (int i = 0; i < Meses; i++)
         {
-            Thread.Sleep(1000);
-            Console.SetCursorPosition(0, Console.CursorTop);
-            Console.WriteLine($"Esperando por procesos activos para terminar {Repes} segundos");
-            Repes++;
-        };
-        Interlocked.Exchange(ref UsandoRec, 0);
+            objTimer.AutoEvent.WaitOne();                 
+        }
+        tLongo.Change(System.Threading.Timeout.Infinite, 1);        
         Console.WriteLine("Programa finalizado.");
     }
     return;
-} catch (Exception e){
+
+} catch (Exception e) {
     Console.WriteLine(e.Message);
     Console.WriteLine("Programa finalizado.");
-    return;
+    return; 
 }
 
-async void DoWork(object Objeto)
+void DoWork(object Objeto)
 {
-    if (0 != Interlocked.Exchange(ref UsandoRec, 1)) return;
+    var objTimer = (ObjTimer) Objeto;
+    var Meses = objTimer.Meses;
+    var FechaInicio = objTimer.FechaInicio;
+    var AutoEvent = objTimer.AutoEvent;
    
-    Console.WriteLine("Worker running at: {time}", DateTimeOffset.Now);
-    await DownloadByMonth(tk);
-    await MakeNclTotals(tk);
+    Console.WriteLine($"Worker running at: {DateTime.Now}");
+    var FechaAct = FechaInicio.AddMonths(NumCompletas);   
+
+    RegistroPorMes RPorMes = new() {
+        Año = FechaAct.Year,
+        Mes = FechaAct.Month
+    };
+    //await WKCopernicus.DownloadByMonth(ref RPorMes, Actualizar: false);
+    //await WKCopernicus.MakeNclTotals(ref RPorMes, Actualizar: false);
     
-    Interlocked.Exchange(ref UsandoRec, 0);
+    NumCompletas++;
+    AutoEvent.Set();
 }
 
 static class WKCopernicus
@@ -116,7 +97,7 @@ static class WKCopernicus
     static WKCopernicus()
     {       
     }    
-    public static Task DownloadByMonth(ref RegistroPorMes RFecha, CancellationToken cToken, bool Actualizar = false)
+    public static Task DownloadByMonth(ref RegistroPorMes RFecha, bool Actualizar = false)
     {        
         try {
             using (FtpClient FTPCliente = new(_servidorRemoto, _usuario, _contra)) {
@@ -175,13 +156,13 @@ static class WKCopernicus
             return Task.FromException(e);
         }
     }
-    public static Task MakeNclTotals(ref RegistroPorMes RFecha, CancellationToken cToken, 
-        bool Actualizar = false)
+    public static Task MakeNclTotals(ref RegistroPorMes RFecha, bool Actualizar = false)
     {
         try {
             SQLiteConnection DbCon = new( @$"Data Source={_RutaDb};Version=3;");
             DbCon.Open();
             using SQLiteCommand CommDb = DbCon.CreateCommand();
+
             CommDb.CommandText = "INSERT OR REPLACE INTO Main VALUES (@anhomesdia, @json, @sifnorte, @sifsur);";
             CommDb.Parameters.Clear();
             CommDb.Parameters.Add("@anhomesdia", System.Data.DbType.Date);
@@ -270,4 +251,12 @@ public class RegistroArchivo
     public double ToTalMeanHeightNorth { get; set; } = -1.0;
     public double ToTalSeaIceFractionSouth { get; set; } = -1.0;
     public double ToTalMeanHeightSouth { get; set; } = -1.0;
+}
+
+public class ObjTimer
+{
+    public int Meses {get; set;} = 0;
+    public DateOnly FechaInicio {get; set;} = DateOnly.MinValue;
+    public AutoResetEvent AutoEvent {get; set;} = new(false);
+
 }

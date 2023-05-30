@@ -10,7 +10,15 @@
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="7.0.1" />
     <PackageReference Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
     <PackageReference Include="System.Data.SQLite.Core" Version="1.0.117" />
+    <PackageReference Include="System.Security.Cryptography.Algorithms" Version="4.3.1" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="appsettings.json">
+      <CopyToOutputDirectory>Newer</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -19,5 +27,6 @@
     <Nullable>disable</Nullable>
     <UserSecretsId>d831a729-afe0-4480-92c7-5acefe32b5b9</UserSecretsId>
   </PropertyGroup>
+
 
 </Project>
