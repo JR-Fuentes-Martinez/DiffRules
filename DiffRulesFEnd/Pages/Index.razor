@@ -1,0 +1,19 @@
+﻿@page "/"
+@using DiffRulesLib
+@inject IJSRuntime JS
+
+<h1>Hello, world!</h1>
+<div id="myDiv"></div>
+
+@code {
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await ConvertArray();
+    }
+    private async Task ConvertArray()
+    {
+        await JS.InvokeVoidAsync("makePlot");    
+    }
+}
+

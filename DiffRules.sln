@@ -7,7 +7,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DiffRulesLib", "DiffRulesLi
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Alglib", "Alglib\Alglib.csproj", "{E3CC07A7-F3EF-485C-BB86-5C0C293A89D9}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DiffRulesConsole", "DiffRulesConsole\DiffRulesConsole.csproj", "{9C0AF201-AE0B-4369-9E2F-500F991F4110}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DiffRulesFEnd", "DiffRulesFEnd\DiffRulesFEnd.csproj", "{A721B733-6035-4606-8F4A-AC8231E4C193}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -26,9 +26,9 @@ Global
 		{E3CC07A7-F3EF-485C-BB86-5C0C293A89D9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E3CC07A7-F3EF-485C-BB86-5C0C293A89D9}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E3CC07A7-F3EF-485C-BB86-5C0C293A89D9}.Release|Any CPU.Build.0 = Release|Any CPU
-		{9C0AF201-AE0B-4369-9E2F-500F991F4110}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{9C0AF201-AE0B-4369-9E2F-500F991F4110}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{9C0AF201-AE0B-4369-9E2F-500F991F4110}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{9C0AF201-AE0B-4369-9E2F-500F991F4110}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A721B733-6035-4606-8F4A-AC8231E4C193}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A721B733-6035-4606-8F4A-AC8231E4C193}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A721B733-6035-4606-8F4A-AC8231E4C193}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A721B733-6035-4606-8F4A-AC8231E4C193}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
