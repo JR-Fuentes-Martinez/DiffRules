@@ -285,7 +285,7 @@ public class NcidWorker : BackgroundService
                 title: Title.init(FSharpOption<string>.Some("Error ( ./. )")));
                
             try {
-                TFAcum.SaveHtml($"{Directory.GetCurrentDirectory()}/x64/{Hemisferio}.html");
+                TDerivada.SaveHtml($"{Directory.GetCurrentDirectory()}/x64/{Hemisferio}.html");
                 //BeautifyHtml($"{Directory.GetCurrentDirectory()}/x64/{Hemisferio}.html");
 
                 if (_conf.GetRequiredSection("Entradas").GetValue<bool>("mostrar")) {
