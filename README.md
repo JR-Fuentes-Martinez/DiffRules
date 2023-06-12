@@ -4,4 +4,5 @@ In Development.
 Data from NCID (NASA gov US) -- Climate (Sea Ice Extent)     
 Credits    
 Alglib, FluentFtp, MS Data Analysis, Plotly[.Net]    
-![Image](./img/Profile.jpeg)
+     
+![Image](./img/Profile.jpg.png)
