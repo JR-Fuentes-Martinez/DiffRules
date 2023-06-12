@@ -1,0 +1,8 @@
+<table class="w3-padding-32">
+    <tr>
+        <th>Company</th>
+        <th>Contact</th>
+        <th>Country</th>
+    </tr>
+</table>
+
