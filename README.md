@@ -6,3 +6,5 @@ Credits
 Alglib, FluentFtp, MS Data Analysis, Plotly[.Net]    
      
 ![Image](./img/Profile.jpg.png)
+     
+![Image](./img/Sur.png)
