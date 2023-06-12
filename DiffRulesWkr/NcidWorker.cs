@@ -286,12 +286,12 @@ public class NcidWorker : BackgroundService
                
             try {
                 TFAcum.SaveHtml($"{Directory.GetCurrentDirectory()}/x64/{Hemisferio}.html");
-                BeautifyHtml($"{Directory.GetCurrentDirectory()}/x64/{Hemisferio}.html");
+                //BeautifyHtml($"{Directory.GetCurrentDirectory()}/x64/{Hemisferio}.html");
 
                 if (_conf.GetRequiredSection("Entradas").GetValue<bool>("mostrar")) {
                     using (Process brave = new Process()) {
                         brave.StartInfo.FileName = "\"C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe\"";
-                        brave.StartInfo.Arguments = $"--incognito {Directory.GetCurrentDirectory()}/x64/dd.html";
+                        brave.StartInfo.Arguments = $"--incognito {Directory.GetCurrentDirectory()}/x64/{Hemisferio}.html";
                         brave.Start();
                     }
                 }
